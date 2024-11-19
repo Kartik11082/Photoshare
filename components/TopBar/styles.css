@@ -1,0 +1,109 @@
+.topbar-appBar {
+  height: 60;
+  justify-content: "center";
+}
+
+.navbar-data {
+  display: flex;
+  gap: 2rem;
+  align-items: center;
+  color: #fff;
+  padding: 0 2rem;
+  border-radius: 10px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.navbar-data .version {
+  font-size: 1.2rem;
+  margin-left: 1rem;
+  color: #ccc;
+}
+
+.advancedFeaturesCheckbox {
+  margin-left: 1rem;
+  margin-right: 1rem;
+  cursor: pointer;
+  background-color: #fff;
+  border: none;
+  border-radius: 5px;
+  padding: 0.5rem 1rem;
+  color: #000;
+  transition: background-color 0.3s ease;
+  border: 2px solid red;
+}
+
+
+/* Checkbox CSS */
+.checkbox-wrapper-64 input[type="checkbox"] {
+  visibility: hidden;
+  display: none;
+}
+
+.checkbox-wrapper-64 *,
+.checkbox-wrapper-64 ::after,
+.checkbox-wrapper-64 ::before {
+  box-sizing: border-box;
+}
+
+/* The switch - the box around the slider */
+.checkbox-wrapper-64 .switch {
+  font-size: 18px;
+  /* Adjust font size for overall scaling */
+  position: relative;
+  display: inline-block;
+  width: 2.5em;
+  /* Smaller width */
+  height: 1.2em;
+  /* Smaller height */
+}
+
+/* Hide default HTML checkbox */
+.checkbox-wrapper-64 .switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+/* The slider */
+.checkbox-wrapper-64 .slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #fff;
+  border: 1px solid #adb5bd;
+  transition: .4s;
+  border-radius: 20px;
+  /* Smaller radius */
+}
+
+.checkbox-wrapper-64 .slider:before {
+  position: absolute;
+  content: "";
+  height: 1em;
+  /* Smaller circle */
+  width: 1em;
+  /* Smaller circle */
+  border-radius: 15px;
+  left: 0.2em;
+  bottom: 0.1em;
+  background-color: #adb5bd;
+  transition: .4s;
+}
+
+.checkbox-wrapper-64 input:checked+.slider {
+  background-color: #007bff;
+  border: 1px solid #007bff;
+}
+
+.checkbox-wrapper-64 input:focus+.slider {
+  box-shadow: 0 0 1px #007bff;
+}
+
+.checkbox-wrapper-64 input:checked+.slider:before {
+  transform: translateX(1em);
+  /* Adjust translation for smaller slider */
+  background-color: #fff;
+}
