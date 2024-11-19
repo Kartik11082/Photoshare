@@ -5,6 +5,9 @@ import PhotoUpload from "../PhotoUpload";
 import "./styles.css";
 
 function TopBar({ currentUser, setCurrentUser }) {
+    console.log("currentUser", currentUser);
+    console.log("setCurrentUser", setCurrentUser);
+
     const [version, setVersion] = useState(null);
     const [showUploadDialog, setShowUploadDialog] = useState(false);
 

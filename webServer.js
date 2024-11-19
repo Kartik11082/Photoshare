@@ -63,7 +63,7 @@ app.get("/user/list", async function (req, res) {
         return res.status(200).json(users);
     } catch (err) {
         console.error("Error fetching user list:", err);
-        return res.status(500).send("Internal server error");
+        return res.status(400).send("Internal server error");
     }
 });
 
@@ -88,7 +88,7 @@ app.get("/user/:id", async function (req, res) {
         return res.status(200).json(user);
     } catch (err) {
         console.error("Error fetching user:", err);
-        return res.status(500).send("Internal server error");
+        return res.status(400).send("Internal server error");
     }
 });
 
@@ -97,14 +97,14 @@ app.get("/user/:id", async function (req, res) {
  */
 app.get("/photosOfUser/:id", async function (req, res) {
     if (!req.session || !req.session.userIdRecord) {
-        return res.status(401).json({ message: "User not logged in." });
+        return res.status(400).json({ message: "User not logged in." });
     }
 
     const id = req.params.id;
     try {
         const photos = await Photo.find({ user_id: id }, "_id user_id comments file_name date_time");
         if (!photos.length) {
-            return res.status(404).send("No photos found for this user");
+            return res.status(400).send("No photos found for this user");
         }
 
         const transformedPhotos = await Promise.all(
@@ -138,7 +138,7 @@ app.get("/photosOfUser/:id", async function (req, res) {
         return res.status(200).json(transformedPhotos);
     } catch (err) {
         console.error("Error fetching photos:", err);
-        return res.status(500).send("Internal server error");
+        return res.status(400).send("Internal server error");
     }
 });
 
@@ -220,7 +220,7 @@ app.post("/admin/login", async (req, res) => {
         return res.status(200).json({ first_name: user.first_name, _id: user._id });
     } catch (err) {
         console.error("Login error:", err);
-        return res.status(500).json({ message: "An error occurred. Please try again later." });
+        return res.status(400).json({ message: "An error occurred. Please try again later." });
     }
 });
 
@@ -235,7 +235,7 @@ app.post("/admin/logout", (req, res) => {
     return req.session.destroy((err) => {
         if (err) {
             console.error("Logout error:", err);
-            return res.status(500).json({ message: "Error during logout. Please try again." });
+            return res.status(400).json({ message: "Error during logout. Please try again." });
         }
         console.log("Logout successful.");
         return res.status(200).send();
@@ -300,6 +300,34 @@ app.get("/user/current", async function (req, res) {
         });
     } catch (err) {
         console.error("Error fetching current user:", err);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+});
+
+// Endpoint to register a new user
+app.post("/user", async (req, res) => {
+    const { login_name, password, first_name, last_name, location, description, occupation } = req.body;
+
+    // Validation
+    if (!login_name || !password || !first_name || !last_name) {
+        return res.status(400).json({ message: "Required fields are missing" });
+    }
+
+    try {
+        // Check if login_name already exists
+        const existingUser = await User.findOne({ login_name });
+        if (existingUser) {
+            return res.status(400).json({ message: "Login name already exists" });
+        }
+
+        // Create new user
+        const newUser = new User({ login_name, password, first_name, last_name, location, description, occupation });
+        await newUser.save();
+
+        // Respond with necessary user properties
+        return res.status(200).json({ login_name: newUser.login_name, _id: newUser._id });
+    } catch (error) {
+        console.error("Registration error:", error);
         return res.status(500).json({ message: "Internal server error" });
     }
 });
