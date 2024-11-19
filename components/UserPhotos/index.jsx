@@ -2,29 +2,16 @@ import React, { useState, useEffect } from "react";
 import { Typography, Card, CardContent, CardMedia, Divider, Button, TextField } from "@mui/material";
 import { Link } from "react-router-dom";
 import axios from "axios";
+import PhotoUpload from "../PhotoUpload";
 import "./styles.css";
-import PhotoUpload from '../PhotoUpload';
 
 function UserPhotos({ userId, advancedFeaturesEnabled }) {
     const [photos, setPhotos] = useState([]);
     const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
-    const [newComment, setNewComment] = useState("");  // New state for comment text
+    const [newComment, setNewComment] = useState("");
+    const [loading, setLoading] = useState(true);
     const [isOwnProfile, setIsOwnProfile] = useState(false);
-    const [loading, setLoading] = useState(true); // Add loading state
-
-    useEffect(() => {
-        const checkOwnProfile = async () => {
-            try {
-                const response = await axios.get('/user/current');
-                setIsOwnProfile(String(response.data._id) === String(userId));
-            } catch (error) {
-                console.error("Error checking user profile:", error);
-                setIsOwnProfile(false);
-            }
-        };
-
-        checkOwnProfile();
-    }, [userId]);
+    const [showUploadDialog, setShowUploadDialog] = useState(false);
 
     useEffect(() => {
         console.log("Fetching user photos");
@@ -47,6 +34,50 @@ function UserPhotos({ userId, advancedFeaturesEnabled }) {
         return () => clearTimeout(delayFetch);
     }, [userId]);
 
+    useEffect(() => {
+        const checkOwnProfile = async () => {
+            try {
+                const response = await axios.get('/user/current');
+                setIsOwnProfile(String(response.data._id) === String(userId));
+            } catch (error) {
+                setIsOwnProfile(false);
+            }
+        };
+        checkOwnProfile();
+    }, [userId]);
+
+    const handlePhotoUploaded = (newPhoto) => {
+        setPhotos(prevPhotos => [...prevPhotos, newPhoto]);
+        if (advancedFeaturesEnabled) {
+            setCurrentPhotoIndex(photos.length);
+        }
+        setShowUploadDialog(false);
+    };
+
+    useEffect(() => {
+        const fetchPhotos = async () => {
+            try {
+                const response = await axios.get(`/photosOfUser/${userId}`);
+                setPhotos(response.data);
+                setLoading(false);
+            } catch (error) {
+                console.error("Error fetching photos:", error);
+                setLoading(false);
+            }
+        };
+
+        fetchPhotos();
+    }, [userId]);
+
+    const refreshPhotos = async () => {
+        try {
+            const response = await axios.get(`/photosOfUser/${userId}`);
+            setPhotos(response.data);
+        } catch (error) {
+            console.error("Error refreshing photos:", error);
+        }
+    };
+
     if (loading) {
         return <Typography variant="body1">Loading...</Typography>;
     }
@@ -67,34 +98,6 @@ function UserPhotos({ userId, advancedFeaturesEnabled }) {
         }
     };
 
-    // const renderComments = (comments) => {
-    //     if (!comments || comments.length === 0) {
-    //         return <Typography variant="body2">No comments available.</Typography>;
-    //     }
-
-    //     console.log("Comments structure:", comments);
-
-    //     return comments.map((comment) => {
-    //         if (!comment || !comment.user) {
-    //             console.warn("Invalid comment structure:", comment);
-    //             return null; // Skip rendering this comment
-    //         }
-    //         console.log("Rendering comment:", comment);
-
-    //         return (
-    //             <div key={comment._id}>
-    //                 <Typography variant="body2">
-    //                     <Link to={`/users/${comment.user._id}`}>
-    //                         {comment.user.first_name || 'Unknown'} {comment.user.last_name || ''}
-    //                     </Link>{" "}
-    //                     commented on {new Date(comment.date_time).toLocaleString()}:
-    //                 </Typography>
-    //                 <Typography variant="body1">{comment.comment}</Typography>
-    //                 <Divider sx={{ margin: "10px 0" }} />
-    //             </div>
-    //         );
-    //     }).filter(Boolean);
-    // };
     const renderComments = (comments) => {
         if (!comments || comments.length === 0) {
             return <Typography variant="body2">No comments available.</Typography>;
@@ -121,49 +124,6 @@ function UserPhotos({ userId, advancedFeaturesEnabled }) {
         }).filter(Boolean); // Filter out any invalid/null comments
     };
 
-
-    // const handleCommentSubmit = async (photoId) => {
-    //     if (!newComment.trim()) {
-    //         console.log("Comment cannot be empty!");
-    //         return;
-    //     }
-
-    //     try {
-    //         const response = await axios.post(`/commentsOfPhoto/${photoId}`, {
-    //             comment: newComment,
-    //         }, {
-    //             headers: {
-    //                 'Content-Type': 'application/json',
-    //             },
-    //         });
-
-    //         const updatedPhotos = photos.map((photo) => {
-    //             if (photo._id === photoId) {
-    //                 const newCommentWithUser = {
-    //                     ...response.data.comment,
-    //                     user: {
-    //                         _id: "current_user_id",
-    //                         first_name: "Current",
-    //                         last_name: "User"
-    //                     }
-    //                 };
-
-    //                 return {
-    //                     ...photo,
-    //                     comments: [...photo.comments, newCommentWithUser]
-    //                 };
-    //             } else {
-    //                 return photo;
-    //             }
-    //         });
-
-    //         setPhotos(updatedPhotos);
-    //         setNewComment("");
-
-    //     } catch (error) {
-    //         console.error("Error submitting comment:", error);
-    //     }
-    // };
     const handleCommentSubmit = async (photoId) => {
         if (!newComment.trim()) {
             console.log("Comment cannot be empty!");
@@ -173,45 +133,28 @@ function UserPhotos({ userId, advancedFeaturesEnabled }) {
         try {
             const response = await axios.post(`/commentsOfPhoto/${photoId}`, {
                 comment: newComment,
-            }, {
-                headers: {
-                    'Content-Type': 'application/json',
-                },
             });
 
             const newCommentData = response.data.comment;
 
-            // Fetch user details using the user API
-            const userResponse = await axios.get(`/user/${newCommentData.user_id}`);
-            const userData = userResponse.data;
-
+            // Update the photos array with the new comment
             const updatedPhotos = photos.map((photo) => {
                 if (photo._id === photoId) {
                     return {
                         ...photo,
-                        comments: [...photo.comments, {
-                            ...newCommentData,
-                            user: {
-                                _id: userData._id,
-                                first_name: userData.first_name,
-                                last_name: userData.last_name
-                            }
-                        }],
+                        comments: [...photo.comments, newCommentData],
                     };
                 }
                 return photo;
             });
 
             setPhotos(updatedPhotos);
-            setNewComment("");
+            setNewComment(""); // Clear the input field
 
         } catch (error) {
             console.error("Error submitting comment:", error);
+            // You might want to show an error message to the user here
         }
-    };
-
-    const handlePhotoUploaded = (newPhoto) => {
-        setPhotos(prevPhotos => [newPhoto, ...prevPhotos]);
     };
 
     if (!advancedFeaturesEnabled) {
@@ -219,7 +162,14 @@ function UserPhotos({ userId, advancedFeaturesEnabled }) {
             <div>
                 <Typography variant="h4">Photos of User {userId}</Typography>
                 {isOwnProfile && (
-                    <PhotoUpload userId={userId} onPhotoUploaded={handlePhotoUploaded} />
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={() => setShowUploadDialog(true)}
+                        sx={{ mb: 2 }}
+                    >
+                        Add Photo
+                    </Button>
                 )}
                 {photos.map((photo) => (
                     <Card key={photo._id} sx={{ marginBottom: 2 }}>
@@ -254,6 +204,15 @@ function UserPhotos({ userId, advancedFeaturesEnabled }) {
                         </CardContent>
                     </Card>
                 ))}
+                {showUploadDialog && (
+                    <PhotoUpload
+                        onClose={() => setShowUploadDialog(false)}
+                        onPhotoUploaded={(newPhoto) => {
+                            handlePhotoUploaded(newPhoto);
+                            refreshPhotos();
+                        }}
+                    />
+                )}
             </div>
         );
     } else {
@@ -262,7 +221,14 @@ function UserPhotos({ userId, advancedFeaturesEnabled }) {
             <div>
                 <Typography variant="h4">Photos of User {userId}</Typography>
                 {isOwnProfile && (
-                    <PhotoUpload userId={userId} onPhotoUploaded={handlePhotoUploaded} />
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={() => setShowUploadDialog(true)}
+                        sx={{ mb: 2 }}
+                    >
+                        Add Photo
+                    </Button>
                 )}
                 <div className="moveButton">
                     <Button
@@ -283,7 +249,7 @@ function UserPhotos({ userId, advancedFeaturesEnabled }) {
                         Next
                     </Button>
                 </div>
-                <Card key={photo._id} sx={{ marginBottom: 2 }}>
+                <Card key={photo?._id} sx={{ marginBottom: 2 }}>
                     <CardMedia
                         component="img"
                         height="400"
@@ -314,6 +280,15 @@ function UserPhotos({ userId, advancedFeaturesEnabled }) {
                         </Button>
                     </CardContent>
                 </Card>
+                {showUploadDialog && (
+                    <PhotoUpload
+                        onClose={() => setShowUploadDialog(false)}
+                        onPhotoUploaded={(newPhoto) => {
+                            handlePhotoUploaded(newPhoto);
+                            refreshPhotos();
+                        }}
+                    />
+                )}
             </div>
         );
     }

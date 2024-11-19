@@ -34,9 +34,7 @@ function PhotoUpload({ onClose, onPhotoUploaded }) {
             if (onPhotoUploaded) {
                 onPhotoUploaded(response.data);
             }
-            // Clear the file input
             uploadInput.current.value = '';
-            // Close dialog after successful upload
             setTimeout(() => onClose(), 1500);
         } catch (err) {
             console.error('Upload error:', err);

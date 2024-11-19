@@ -146,6 +146,7 @@ app.get("/photosOfUser/:id", async function (req, res) {
  * URL /commentsOfPhoto/:photo_id - Add a new comment to a photo
  */
 app.post("/commentsOfPhoto/:photo_id", async function (req, res) {
+    // Check if user is logged in
     if (!req.session || !req.session.userIdRecord) {
         return res.status(401).json({ message: "User not logged in." });
     }
@@ -153,36 +154,37 @@ app.post("/commentsOfPhoto/:photo_id", async function (req, res) {
     const photoId = req.params.photo_id;
     const { comment } = req.body;
 
-    if (!comment) {
+    // Validate comment
+    if (!comment || comment.trim().length === 0) {
         return res.status(400).json({ message: "Comment text is required." });
     }
 
     try {
+        // Find the photo
         const photo = await Photo.findById(photoId);
         if (!photo) {
             return res.status(404).json({ message: "Photo not found." });
         }
 
-        // Get the current user's details
-        const user = await User.findById(req.session.userIdRecord, "first_name last_name");
-        if (!user) {
-            return res.status(404).json({ message: "User not found." });
-        }
-
+        // Create new comment
         const newComment = {
-            comment: comment,
+            comment: comment.trim(),
             user_id: req.session.userIdRecord,
             date_time: new Date()
         };
 
+        // Add comment to photo
         photo.comments.push(newComment);
         await photo.save();
 
-        // Return the new comment with the user details
+        // Get the user details for the response
+        const user = await User.findById(req.session.userIdRecord, "first_name last_name");
+
+        // Return the new comment with user details
         return res.status(200).json({
             comment: {
                 ...newComment,
-                _id: photo.comments[photo.comments.length - 1]._id,
+                _id: photo.comments[photo.comments.length - 1]._id, // Get the ID MongoDB assigned
                 user: {
                     _id: user._id,
                     first_name: user.first_name,
@@ -252,14 +254,6 @@ app.post("/photos/new", function (req, res) {
         }
 
         try {
-            // Get the target user ID from the form data
-            const targetUserId = req.body.userId;
-
-            // Convert both IDs to strings for comparison
-            if (targetUserId && String(targetUserId) !== String(req.session.userIdRecord)) {
-                return res.status(403).json({ message: "You can only upload photos to your own profile." });
-            }
-
             // Create unique filename using timestamp
             const timestamp = new Date().valueOf();
             const filename = 'U' + String(timestamp) + req.file.originalname;
@@ -289,6 +283,7 @@ app.post("/photos/new", function (req, res) {
  * URL /user/current - Returns the current logged-in user's information
  */
 app.get("/user/current", async function (req, res) {
+    // Check if user is logged in
     if (!req.session || !req.session.userIdRecord) {
         return res.status(401).json({ message: "User not logged in." });
     }

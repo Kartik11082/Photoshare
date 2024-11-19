@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { AppBar, Toolbar, Typography, Button } from "@mui/material";
 import axios from "axios";
+import PhotoUpload from "../PhotoUpload";
 import "./styles.css";
-import PhotoUpload from "../PhotoUpload/index";
 
 function TopBar({ currentUser, setCurrentUser }) {
     const [version, setVersion] = useState(null);
@@ -19,10 +19,14 @@ function TopBar({ currentUser, setCurrentUser }) {
     const handleLogout = async () => {
         try {
             await axios.post("/admin/logout");
-            setCurrentUser(null); // Clear the current user after logout
+            setCurrentUser(null);
         } catch (error) {
             console.error("Error during logout:", error);
         }
+    };
+
+    const handlePhotoUploaded = () => {
+        setShowUploadDialog(false);
     };
 
     return (
@@ -30,7 +34,7 @@ function TopBar({ currentUser, setCurrentUser }) {
             <Toolbar>
                 <Typography variant="h5" color="inherit">
                     <div className="navbar-data">
-                        Kartik Karkera <div className="version">Version: {version && `(v${version})`}</div>
+                        <div className="version">Version: {version && `(v${version})`}</div>
                     </div>
                 </Typography>
                 <div style={{ flexGrow: 1 }} />
@@ -53,15 +57,6 @@ function TopBar({ currentUser, setCurrentUser }) {
                         >
                             Logout
                         </Button>
-                        {showUploadDialog && (
-                            <PhotoUpload 
-                                userId={currentUser._id} 
-                                onClose={() => setShowUploadDialog(false)}
-                                onPhotoUploaded={() => {
-                                    setShowUploadDialog(false);
-                                }}
-                            />
-                        )}
                     </>
                 ) : (
                     <Typography variant="h6" color="inherit">
@@ -69,6 +64,12 @@ function TopBar({ currentUser, setCurrentUser }) {
                     </Typography>
                 )}
             </Toolbar>
+            {showUploadDialog && (
+                <PhotoUpload
+                    onClose={() => setShowUploadDialog(false)}
+                    onPhotoUploaded={handlePhotoUploaded}
+                />
+            )}
         </AppBar>
     );
 }
