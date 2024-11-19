@@ -4,8 +4,8 @@ import axios from "axios";
 import PhotoUpload from "../PhotoUpload";
 import "./styles.css";
 
-function TopBar({ currentUser, setCurrentUser }) {
-    console.log("currentUser", currentUser);
+function TopBar({ loggedInUser, setCurrentUser }) {
+    console.log("loggedInUser", loggedInUser);
     console.log("setCurrentUser", setCurrentUser);
 
     const [version, setVersion] = useState(null);
@@ -41,10 +41,10 @@ function TopBar({ currentUser, setCurrentUser }) {
                     </div>
                 </Typography>
                 <div style={{ flexGrow: 1 }} />
-                {currentUser ? (
+                {loggedInUser ? (
                     <>
                         <Typography variant="h6" color="inherit">
-                            Hi {currentUser.first_name}
+                            Hi {loggedInUser.first_name}
                         </Typography>
                         <Button
                             color="inherit"

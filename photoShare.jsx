@@ -1,4 +1,4 @@
-import { Grid, Paper, Typography } from "@mui/material";
+import { Grid, Paper, Typography, Button } from "@mui/material";
 import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
 import { HashRouter, Route, Routes, useNavigate, useParams } from "react-router-dom";
@@ -49,7 +49,7 @@ function ProtectedRoute({ currentUser, children }) {
 
 function PhotoShare() {
     const [advancedFeaturesEnabled, setAdvancedFeaturesEnabled] = useState(false);
-    const [currentUser, setCurrentUser] = useState(null);
+    const [loggedInUser, setLoggedInUser] = useState(null);
 
     const handleToggleAdvancedFeatures = () => {
         setAdvancedFeaturesEnabled(!advancedFeaturesEnabled);
@@ -61,15 +61,17 @@ function PhotoShare() {
                 <Grid container spacing={2}>
                     <Grid item xs={12}>
                         <TopBar
-                            onToggleAdvancedFeatures={handleToggleAdvancedFeatures}
-                            currentUser={currentUser}
-                            setCurrentUser={setCurrentUser}
+                            loggedInUser={loggedInUser}
+                            setCurrentUser={setLoggedInUser}
                         />
+                        <Button onClick={handleToggleAdvancedFeatures}>
+                            {advancedFeaturesEnabled ? "Disable Advanced Features" : "Enable Advanced Features"}
+                        </Button>
                     </Grid>
                     <div className="main-topbar-buffer" />
                     <Grid item sm={3}>
                         <Paper className="main-grid-item">
-                            {currentUser && <UserList />} {/* Only show user list if logged in */}
+                            {loggedInUser && <UserList />} {/* Only show user list if logged in */}
                         </Paper>
                     </Grid>
                     <Grid item sm={9}>
@@ -78,30 +80,30 @@ function PhotoShare() {
                                 <Route
                                     path="/"
                                     element={
-                                        currentUser ? (
+                                        loggedInUser ? (
                                             <Typography variant="body1">
                                                 Welcome to your photosharing app!
                                             </Typography>
                                         ) : (
-                                            <LoginRegister setCurrentUser={setCurrentUser} />
+                                            <LoginRegister setCurrentUser={setLoggedInUser} />
                                         )
                                     }
                                 />
                                 <Route
                                     path="/login"
-                                    element={<LoginRegister setCurrentUser={setCurrentUser} />}
+                                    element={<LoginRegister setCurrentUser={setLoggedInUser} />}
                                 />
                                 <Route
                                     path="/users/:userId"
-                                    element={<ProtectedRoute currentUser={currentUser}><UserDetailRoute setCurrentUser={setCurrentUser} /></ProtectedRoute>}
+                                    element={<ProtectedRoute currentUser={loggedInUser}><UserDetailRoute /></ProtectedRoute>}
                                 />
                                 <Route
                                     path="/photos/:userId"
-                                    element={<ProtectedRoute currentUser={currentUser}><UserPhotosRoute advancedFeaturesEnabled={advancedFeaturesEnabled} setCurrentUser={setCurrentUser} /></ProtectedRoute>}
+                                    element={<ProtectedRoute currentUser={loggedInUser}><UserPhotosRoute advancedFeaturesEnabled={advancedFeaturesEnabled} /></ProtectedRoute>}
                                 />
                                 <Route
                                     path="/users"
-                                    element={<ProtectedRoute currentUser={currentUser}> <UserList /></ProtectedRoute>}
+                                    element={<ProtectedRoute currentUser={loggedInUser}> <UserList /></ProtectedRoute>}
                                 />
                             </Routes>
                         </Paper>
