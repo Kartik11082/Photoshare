@@ -20,7 +20,7 @@ app.use(express.json()); // Middleware to parse JSON request bodies.
 // Load the Mongoose schema for User, Photo, and SchemaInfo
 const User = require("./schema/user.js");
 const Photo = require("./schema/photo.js");
-// const SchemaInfo = require("./schema/schemaInfo.js");
+const SchemaInfo = require("./schema/schemaInfo.js");
 
 mongoose.set("strictQuery", false);
 mongoose.connect("mongodb://127.0.0.1/project6", {
@@ -52,6 +52,66 @@ app.get("/", function (request, response) {
  * URL /user/list - Returns all the User objects if the user is logged in.
  */
 
+
+app.get("/test/:p1", async function (request, response) {
+    // Express parses the ":p1" from the URL and returns it in the request.params
+    // objects.
+    console.log("/test called with param1 = ", request.params.p1);
+
+    const param = request.params.p1 || "info";
+
+    if (param === "info") {
+        // Fetch the SchemaInfo. There should only one of them. The query of {} will
+        // match it.
+        try {
+
+            const info = await SchemaInfo.find({});
+            if (info.length === 0) {
+                // No SchemaInfo found - return 500 error
+                return response.status(500).send("Missing SchemaInfo");
+            }
+            console.log("SchemaInfo", info[0]);
+            return response.json(info[0]); // Use `json()` to send JSON responses
+        } catch (err) {
+            // Handle any errors that occurred during the query
+            console.error("Error in /test/info:", err);
+            return response.status(500).json(err); // Send the error as JSON
+        }
+
+    } else if (param === "counts") {
+        // If the request parameter is "counts", we need to return the counts of all collections.
+        // To achieve this, we perform asynchronous calls to each collection using `Promise.all`.
+        // We store the collections in an array and use `Promise.all` to execute each `.countDocuments()` query concurrently.
+
+
+        const collections = [
+            { name: "user", collection: User },
+            { name: "photo", collection: Photo },
+            { name: "schemaInfo", collection: SchemaInfo },
+        ];
+
+        try {
+            await Promise.all(
+                collections.map(async (col) => {
+                    col.count = await col.collection.countDocuments({});
+                    return col;
+                })
+            );
+
+            const obj = {};
+            for (let i = 0; i < collections.length; i++) {
+                obj[collections[i].name] = collections[i].count;
+            }
+            return response.end(JSON.stringify(obj));
+        } catch (err) {
+            return response.status(500).send(JSON.stringify(err));
+        }
+    } else {
+        // If we know understand the parameter we return a (Bad Parameter) (400)
+        // status.
+        return response.status(400).send("Bad param " + param);
+    }
+});
 
 app.get("/user/list", async function (req, res) {
     if (!req.session || !req.session.userIdRecord) {
@@ -97,7 +157,7 @@ app.get("/user/:id", async function (req, res) {
  */
 app.get("/photosOfUser/:id", async function (req, res) {
     if (!req.session || !req.session.userIdRecord) {
-        return res.status(400).json({ message: "User not logged in." });
+        return res.status(401).json({ message: "User not logged in." });
     }
 
     const id = req.params.id;
@@ -146,31 +206,35 @@ app.get("/photosOfUser/:id", async function (req, res) {
  * URL /commentsOfPhoto/:photo_id - Add a new comment to a photo
  */
 app.post("/commentsOfPhoto/:photo_id", async function (req, res) {
-    // Check if user is logged in
     if (!req.session || !req.session.userIdRecord) {
         return res.status(401).json({ message: "User not logged in." });
     }
 
     const photoId = req.params.photo_id;
-    const { comment } = req.body;
+    const { comment, mentions } = req.body;
 
-    // Validate comment
     if (!comment || comment.trim().length === 0) {
         return res.status(400).json({ message: "Comment text is required." });
     }
 
     try {
-        // Find the photo
         const photo = await Photo.findById(photoId);
         if (!photo) {
             return res.status(404).json({ message: "Photo not found." });
         }
 
+        // Format mentions data
+        const formattedMentions = Array.isArray(mentions) ? mentions.map(mentionId => ({
+            user_id: mentionId,
+            date_time: new Date()
+        })) : [];
+
         // Create new comment
         const newComment = {
             comment: comment.trim(),
             user_id: req.session.userIdRecord,
-            date_time: new Date()
+            date_time: new Date(),
+            mentions: formattedMentions
         };
 
         // Add comment to photo
@@ -184,7 +248,7 @@ app.post("/commentsOfPhoto/:photo_id", async function (req, res) {
         return res.status(200).json({
             comment: {
                 ...newComment,
-                _id: photo.comments[photo.comments.length - 1]._id, // Get the ID MongoDB assigned
+                _id: photo.comments[photo.comments.length - 1]._id,
                 user: {
                     _id: user._id,
                     first_name: user.first_name,
@@ -194,7 +258,7 @@ app.post("/commentsOfPhoto/:photo_id", async function (req, res) {
         });
     } catch (err) {
         console.error("Error adding comment:", err);
-        return res.status(500).json({ message: "Internal server error" });
+        return res.status(500).json({ message: "Internal server error", error: err.message });
     }
 });
 
@@ -328,6 +392,122 @@ app.post("/user", async (req, res) => {
         return res.status(200).json({ login_name: newUser.login_name, _id: newUser._id });
     } catch (error) {
         console.error("Registration error:", error);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+});
+
+app.get("/mentionsOfUser/:id", async function (req, res) {
+    if (!req.session || !req.session.userIdRecord) {
+        return res.status(401).json({ message: "User not logged in." });
+    }
+
+    const userId = req.params.id;
+    try {
+        const photos = await Photo.find({
+            "comments.mentions.user_id": userId
+        }).populate('user_id', 'first_name last_name');
+
+        const transformedPhotos = photos.map(photo => ({
+            _id: photo._id,
+            file_name: photo.file_name,
+            date_time: photo.date_time,
+            user_id: photo.user_id._id,
+            owner_first_name: photo.user_id.first_name,
+            owner_last_name: photo.user_id.last_name
+        }));
+
+        return res.status(200).json(transformedPhotos);
+    } catch (err) {
+        console.error("Error fetching mentions:", err);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+});
+
+// Delete a photo
+app.delete("/photos/:photo_id", async function (req, res) {
+    if (!req.session || !req.session.userIdRecord) {
+        return res.status(401).json({ message: "User not logged in." });
+    }
+
+    try {
+        const photo = await Photo.findById(req.params.photo_id);
+        if (!photo) {
+            return res.status(404).json({ message: "Photo not found" });
+        }
+
+        // Check if user owns the photo
+        if (photo.user_id.toString() !== req.session.userIdRecord) {
+            return res.status(403).json({ message: "Not authorized to delete this photo" });
+        }
+
+        await Photo.deleteOne({ _id: req.params.photo_id });
+        return res.status(200).json({ message: "Photo deleted successfully" });
+    } catch (err) {
+        console.error('Error deleting photo:', err);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+});
+
+// Delete a comment
+app.delete("/comments/:photo_id/:comment_id", async function (req, res) {
+    if (!req.session || !req.session.userIdRecord) {
+        return res.status(401).json({ message: "User not logged in." });
+    }
+
+    try {
+        const photo = await Photo.findById(req.params.photo_id);
+        if (!photo) {
+            return res.status(404).json({ message: "Photo not found" });
+        }
+
+        const comment = photo.comments.id(req.params.comment_id);
+        if (!comment) {
+            return res.status(404).json({ message: "Comment not found" });
+        }
+
+        // Check if user owns the comment
+        if (comment.user_id.toString() !== req.session.userIdRecord) {
+            return res.status(403).json({ message: "Not authorized to delete this comment" });
+        }
+
+        photo.comments.pull(req.params.comment_id);
+        await photo.save();
+        return res.status(200).json({ message: "Comment deleted successfully" });
+    } catch (err) {
+        console.error('Error deleting comment:', err);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+});
+
+// Delete user account
+app.delete("/user/:user_id", async function (req, res) {
+    if (!req.session || !req.session.userIdRecord) {
+        return res.status(401).json({ message: "User not logged in." });
+    }
+
+    if (req.params.user_id !== req.session.userIdRecord) {
+        return res.status(403).json({ message: "Not authorized to delete this account" });
+    }
+
+    try {
+        // Delete all photos by this user
+        await Photo.deleteMany({ user_id: req.params.user_id });
+
+        // Remove comments by this user from all photos
+        await Photo.updateMany(
+            { "comments.user_id": req.params.user_id },
+            { $pull: { comments: { user_id: req.params.user_id } } }
+        );
+
+        // Delete the user
+        await User.deleteOne({ _id: req.params.user_id });
+
+        // Clear the session
+        req.session.destroy();
+
+        return res.status(200).json({ message: "Account deleted successfully" });
+    } catch (err) {
+        console.error('Error deleting account:', err);
         return res.status(500).json({ message: "Internal server error" });
     }
 });

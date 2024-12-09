@@ -5,11 +5,19 @@ import PhotoUpload from "../PhotoUpload";
 import "./styles.css";
 
 function TopBar({ loggedInUser, setCurrentUser }) {
-    console.log("loggedInUser", loggedInUser);
-    console.log("setCurrentUser", setCurrentUser);
-
     const [version, setVersion] = useState(null);
     const [showUploadDialog, setShowUploadDialog] = useState(false);
+
+    useEffect(() => {
+        // Check localStorage for user data on component mount
+        const storedUser = localStorage.getItem('loggedInUser');
+        if (storedUser && !loggedInUser) {
+            const user = JSON.parse(storedUser);
+            setCurrentUser(user);
+            // Set axios default header with session info
+            axios.defaults.withCredentials = true;
+        }
+    }, []);
 
     useEffect(() => {
         axios.get("/test/info")
@@ -21,12 +29,20 @@ function TopBar({ loggedInUser, setCurrentUser }) {
 
     const handleLogout = async () => {
         try {
-            await axios.post("/admin/logout");
+            await axios.post("/admin/logout", {});
             setCurrentUser(null);
+            localStorage.removeItem('loggedInUser');
         } catch (error) {
             console.error("Error during logout:", error);
         }
     };
+
+    // Store user data in localStorage when it changes
+    useEffect(() => {
+        if (loggedInUser) {
+            localStorage.setItem('loggedInUser', JSON.stringify(loggedInUser));
+        }
+    }, [loggedInUser]);
 
     const handlePhotoUploaded = () => {
         setShowUploadDialog(false);

@@ -6,7 +6,7 @@ module.exports = {
   },
   plugins: [
     new webpack.DefinePlugin({
-        '__REACT_DEVTOOLS_GLOBAL_HOOK__': '({ isDisabled: true })'
+      '__REACT_DEVTOOLS_GLOBAL_HOOK__': '({ isDisabled: true })'
     }),
   ],
   module: {
@@ -18,7 +18,7 @@ module.exports = {
       },
       {
         test: /\.css$/,
-        use: [ "style-loader", "css-loader" ],
+        use: ["style-loader", "css-loader"],
       },
       {
         test: /\.(png|jpg|gif)$/,

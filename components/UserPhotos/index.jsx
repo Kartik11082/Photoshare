@@ -1,17 +1,23 @@
-import React, { useState, useEffect } from "react";
-import { Typography, Card, CardContent, CardMedia, Divider, Button, TextField } from "@mui/material";
-import { Link } from "react-router-dom";
+import DeleteIcon from '@mui/icons-material/Delete';
+import { Button, Card, CardContent, CardMedia, Divider, IconButton, Typography } from "@mui/material";
 import axios from "axios";
+import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import CommentInput from "../CommentInput";
+import DeleteConfirmDialog from '../DeleteConfirmDialog';
 import PhotoUpload from "../PhotoUpload";
 import "./styles.css";
 
-function UserPhotos({ userId, advancedFeaturesEnabled }) {
+function UserPhotos({ userId, advancedFeaturesEnabled, currentUser }) {
     const [photos, setPhotos] = useState([]);
     const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
-    const [newComment, setNewComment] = useState("");
+    // const [newComment, setNewComment] = useState("");
     const [loading, setLoading] = useState(true);
     const [isOwnProfile, setIsOwnProfile] = useState(false);
     const [showUploadDialog, setShowUploadDialog] = useState(false);
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [itemToDelete, setItemToDelete] = useState(null);
+    const [deleteType, setDeleteType] = useState(null); // 'photo' or 'comment'
 
     useEffect(() => {
         console.log("Fetching user photos");
@@ -78,6 +84,39 @@ function UserPhotos({ userId, advancedFeaturesEnabled }) {
         }
     };
 
+    const handleDeleteClick = (type, id) => {
+        setDeleteType(type);
+        setItemToDelete(id);
+        setDeleteDialogOpen(true);
+    };
+
+    const handleDeleteConfirm = async () => {
+        try {
+            if (deleteType === 'photo') {
+                await axios.delete(`/photos/${itemToDelete}`);
+                setPhotos(photos.filter(photo => photo._id !== itemToDelete));
+            } else if (deleteType === 'comment') {
+                const [photoId, commentId] = itemToDelete.split(':');
+                await axios.delete(`/comments/${photoId}/${commentId}`);
+                const updatedPhotos = photos.map(photo => {
+                    if (photo._id === photoId) {
+                        return {
+                            ...photo,
+                            comments: photo.comments.filter(comment => comment._id !== commentId)
+                        };
+                    }
+                    return photo;
+                });
+                setPhotos(updatedPhotos);
+            }
+        } catch (error) {
+            console.error('Error deleting item:', error);
+        }
+        setDeleteDialogOpen(false);
+        setItemToDelete(null);
+        setDeleteType(null);
+    };
+
     if (loading) {
         return <Typography variant="body1">Loading...</Typography>;
     }
@@ -98,7 +137,7 @@ function UserPhotos({ userId, advancedFeaturesEnabled }) {
         }
     };
 
-    const renderComments = (comments) => {
+    const renderComments = (comments, photo) => {
         if (!comments || comments.length === 0) {
             return <Typography variant="body2">No comments available.</Typography>;
         }
@@ -119,43 +158,52 @@ function UserPhotos({ userId, advancedFeaturesEnabled }) {
                     </Typography>
                     <Typography variant="body1">{comment.comment}</Typography>
                     <Divider sx={{ margin: "10px 0" }} />
+                    {(isOwnProfile || comment.user._id === currentUser._id) && (
+                        <IconButton
+                            onClick={() => handleDeleteClick('comment', `${photo._id}:${comment._id}`)}
+                            color="error"
+                            size="small"
+                        >
+                            <DeleteIcon />
+                        </IconButton>
+                    )}
                 </div>
             );
         }).filter(Boolean); // Filter out any invalid/null comments
     };
 
-    const handleCommentSubmit = async (photoId) => {
-        if (!newComment.trim()) {
-            console.log("Comment cannot be empty!");
-            return;
-        }
+    // const handleCommentSubmit = async (photoId) => {
+    //     if (!newComment.trim()) {
+    //         console.log("Comment cannot be empty!");
+    //         return;
+    //     }
 
-        try {
-            const response = await axios.post(`/commentsOfPhoto/${photoId}`, {
-                comment: newComment,
-            });
+    //     try {
+    //         const response = await axios.post(`/commentsOfPhoto/${photoId}`, {
+    //             comment: newComment,
+    //         });
 
-            const newCommentData = response.data.comment;
+    //         const newCommentData = response.data.comment;
 
-            // Update the photos array with the new comment
-            const updatedPhotos = photos.map((photo) => {
-                if (photo._id === photoId) {
-                    return {
-                        ...photo,
-                        comments: [...photo.comments, newCommentData],
-                    };
-                }
-                return photo;
-            });
+    //         // Update the photos array with the new comment
+    //         const updatedPhotos = photos.map((photo) => {
+    //             if (photo._id === photoId) {
+    //                 return {
+    //                     ...photo,
+    //                     comments: [...photo.comments, newCommentData],
+    //                 };
+    //             }
+    //             return photo;
+    //         });
 
-            setPhotos(updatedPhotos);
-            setNewComment(""); // Clear the input field
+    //         setPhotos(updatedPhotos);
+    //         setNewComment(""); // Clear the input field
 
-        } catch (error) {
-            console.error("Error submitting comment:", error);
-            // You might want to show an error message to the user here
-        }
-    };
+    //     } catch (error) {
+    //         console.error("Error submitting comment:", error);
+    //         // You might want to show an error message to the user here
+    //     }
+    // };
 
     if (!advancedFeaturesEnabled) {
         return (
@@ -185,22 +233,31 @@ function UserPhotos({ userId, advancedFeaturesEnabled }) {
                             </Typography>
                             <Divider sx={{ margin: "10px 0" }} />
                             <Typography variant="h6">Comments:</Typography>
-                            {renderComments(photo.comments)}
-                            <TextField
-                                value={newComment}
-                                onChange={(e) => setNewComment(e.target.value)}
-                                label="Add a comment"
-                                variant="outlined"
-                                fullWidth
-                                margin="normal"
+                            {renderComments(photo.comments, photo)}
+                            <CommentInput
+                                photoId={photo._id}
+                                onCommentSubmitted={(newCommentData) => {
+                                    const updatedPhotos = photos.map((p) => {
+                                        if (p._id === photo._id) {
+                                            return {
+                                                ...p,
+                                                comments: [...p.comments, newCommentData],
+                                            };
+                                        }
+                                        return p;
+                                    });
+                                    setPhotos(updatedPhotos);
+                                }}
                             />
-                            <Button
-                                onClick={() => handleCommentSubmit(photo._id)}
-                                variant="contained"
-                                color="primary"
-                            >
-                                Submit Comment
-                            </Button>
+                            {isOwnProfile && (
+                                <IconButton
+                                    onClick={() => handleDeleteClick('photo', photo._id)}
+                                    color="error"
+                                    size="small"
+                                >
+                                    <DeleteIcon />
+                                </IconButton>
+                            )}
                         </CardContent>
                     </Card>
                 ))}
@@ -213,6 +270,13 @@ function UserPhotos({ userId, advancedFeaturesEnabled }) {
                         }}
                     />
                 )}
+                <DeleteConfirmDialog
+                    open={deleteDialogOpen}
+                    title={`Delete ${deleteType === 'photo' ? 'Photo' : 'Comment'}`}
+                    message={`Are you sure you want to delete this ${deleteType}? This action cannot be undone.`}
+                    onConfirm={handleDeleteConfirm}
+                    onCancel={() => setDeleteDialogOpen(false)}
+                />
             </div>
         );
     } else {
@@ -262,22 +326,31 @@ function UserPhotos({ userId, advancedFeaturesEnabled }) {
                         </Typography>
                         <Divider sx={{ margin: "10px 0" }} />
                         <Typography variant="h6">Comments:</Typography>
-                        {renderComments(photo.comments)}
-                        <TextField
-                            value={newComment}
-                            onChange={(e) => setNewComment(e.target.value)}
-                            label="Add a comment"
-                            variant="outlined"
-                            fullWidth
-                            margin="normal"
+                        {renderComments(photo.comments, photo)}
+                        <CommentInput
+                            photoId={photo._id}
+                            onCommentSubmitted={(newCommentData) => {
+                                const updatedPhotos = photos.map((p) => {
+                                    if (p._id === photo._id) {
+                                        return {
+                                            ...p,
+                                            comments: [...p.comments, newCommentData],
+                                        };
+                                    }
+                                    return p;
+                                });
+                                setPhotos(updatedPhotos);
+                            }}
                         />
-                        <Button
-                            onClick={() => handleCommentSubmit(photo._id)}
-                            variant="contained"
-                            color="primary"
-                        >
-                            Submit Comment
-                        </Button>
+                        {isOwnProfile && (
+                            <IconButton
+                                onClick={() => handleDeleteClick('photo', photo._id)}
+                                color="error"
+                                size="small"
+                            >
+                                <DeleteIcon />
+                            </IconButton>
+                        )}
                     </CardContent>
                 </Card>
                 {showUploadDialog && (
@@ -289,6 +362,13 @@ function UserPhotos({ userId, advancedFeaturesEnabled }) {
                         }}
                     />
                 )}
+                <DeleteConfirmDialog
+                    open={deleteDialogOpen}
+                    title={`Delete ${deleteType === 'photo' ? 'Photo' : 'Comment'}`}
+                    message={`Are you sure you want to delete this ${deleteType}? This action cannot be undone.`}
+                    onConfirm={handleDeleteConfirm}
+                    onCancel={() => setDeleteDialogOpen(false)}
+                />
             </div>
         );
     }

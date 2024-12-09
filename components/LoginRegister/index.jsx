@@ -1,6 +1,8 @@
 import React, { useState } from "react";
-import { TextField, Button, Typography, Box, Divider } from "@mui/material";
+import { TextField, Button, Typography, Divider } from "@mui/material";
 import axios from "axios";
+import "./styles.css";
+
 
 function LoginRegister({ setCurrentUser }) {
     // Login states
@@ -30,6 +32,7 @@ function LoginRegister({ setCurrentUser }) {
             };
             const response = await axios.post("/admin/login", loginData);
             setCurrentUser(response.data);
+            localStorage.setItem('loggedInUser', JSON.stringify(response.data));
             setLoginError("");
         } catch (err) {
             setLoginError(err.response?.data?.message || "Invalid login credentials. Please try again.");
@@ -78,85 +81,114 @@ function LoginRegister({ setCurrentUser }) {
     };
 
     return (
-        <Box display="flex" flexDirection="column" alignItems="center" mt={5}>
-            <Typography variant="h5" gutterBottom>Login</Typography>
-            <TextField
-                label="Login Name"
-                value={loginUsername}
-                onChange={(e) => setLoginUsername(e.target.value)}
-                style={{ marginBottom: "10px", width: "300px" }}
-            />
-            <TextField
-                label="Password"
-                type="password"
-                value={loginPassword}
-                onChange={(e) => setLoginPassword(e.target.value)}
-                style={{ marginBottom: "20px", width: "300px" }}
-            />
-            <Button variant="contained" color="primary" onClick={handleLogin}>
-                Login
-            </Button>
-            {loginError && <Typography color="error" mt={2}>{loginError}</Typography>}
+        <div className="login-register-container">
+            <div className="login-section">
+                <Typography variant="h5" className="section-title">Login</Typography>
+                <TextField
+                    className="form-field"
+                    label="Login Name"
+                    value={loginUsername}
+                    onChange={(e) => setLoginUsername(e.target.value)}
+                    fullWidth
+                />
+                <TextField
+                    className="form-field"
+                    label="Password"
+                    type="password"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    fullWidth
+                />
+                <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={handleLogin}
+                    className="submit-button"
+                >
+                    Login
+                </Button>
+                {loginError && <div className="error-message">{loginError}</div>}
+            </div>
 
-            <Divider style={{ width: "100%", margin: "30px 0" }} />
+            <Divider className="divider" />
 
-            <Typography variant="h5" gutterBottom>Register New Account</Typography>
-            <TextField
-                label="Login Name *"
-                value={registerUsername}
-                onChange={e => setRegisterUsername(e.target.value)}
-                style={{ marginBottom: "10px", width: "300px" }}
-            />
-            <TextField
-                label="Password *"
-                type="password"
-                value={registerPassword}
-                onChange={e => setRegisterPassword(e.target.value)}
-                style={{ marginBottom: "10px", width: "300px" }}
-            />
-            <TextField
-                label="Confirm Password *"
-                type="password"
-                value={confirmPassword}
-                onChange={e => setConfirmPassword(e.target.value)}
-                style={{ marginBottom: "10px", width: "300px" }}
-            />
-            <TextField
-                label="First Name *"
-                value={firstName}
-                onChange={e => setFirstName(e.target.value)}
-                style={{ marginBottom: "10px", width: "300px" }}
-            />
-            <TextField
-                label="Last Name *"
-                value={lastName}
-                onChange={e => setLastName(e.target.value)}
-                style={{ marginBottom: "10px", width: "300px" }}
-            />
-            <TextField
-                label="Location"
-                value={location}
-                onChange={e => setLocation(e.target.value)}
-                style={{ marginBottom: "10px", width: "300px" }}
-            />
-            <TextField
-                label="Description"
-                value={description}
-                onChange={e => setDescription(e.target.value)}
-                style={{ marginBottom: "10px", width: "300px" }}
-            />
-            <TextField
-                label="Occupation"
-                value={occupation}
-                onChange={e => setOccupation(e.target.value)}
-                style={{ marginBottom: "20px", width: "300px" }}
-            />
-            <Button variant="contained" color="secondary" onClick={handleRegister}>
-                Register Me
-            </Button>
-            {registerError && <Typography color="error" mt={2}>{registerError}</Typography>}
-            {registerSuccess && <Typography color="success" mt={2}>Registration successful! Please login.</Typography>}
-        </Box>
+            <div className="register-section">
+                <Typography variant="h5" className="section-title">Register New Account</Typography>
+                <TextField
+                    className="form-field"
+                    label="Login Name"
+                    value={registerUsername}
+                    onChange={e => setRegisterUsername(e.target.value)}
+                    required
+                    fullWidth
+                />
+                <TextField
+                    className="form-field"
+                    label="Password"
+                    type="password"
+                    value={registerPassword}
+                    onChange={e => setRegisterPassword(e.target.value)}
+                    required
+                    fullWidth
+                />
+                <TextField
+                    className="form-field"
+                    label="Confirm Password"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)}
+                    required
+                    fullWidth
+                />
+                <TextField
+                    className="form-field"
+                    label="First Name"
+                    value={firstName}
+                    onChange={e => setFirstName(e.target.value)}
+                    required
+                    fullWidth
+                />
+                <TextField
+                    className="form-field"
+                    label="Last Name"
+                    value={lastName}
+                    onChange={e => setLastName(e.target.value)}
+                    required
+                    fullWidth
+                />
+                <TextField
+                    className="form-field"
+                    label="Location"
+                    value={location}
+                    onChange={e => setLocation(e.target.value)}
+                    fullWidth
+                />
+                <TextField
+                    className="form-field"
+                    label="Description"
+                    value={description}
+                    onChange={e => setDescription(e.target.value)}
+                    fullWidth
+                />
+                <TextField
+                    className="form-field"
+                    label="Occupation"
+                    value={occupation}
+                    onChange={e => setOccupation(e.target.value)}
+                    fullWidth
+                />
+                <Button
+                    variant="contained"
+                    color="secondary"
+                    onClick={handleRegister}
+                    className="submit-button"
+                >
+                    Register Me
+                </Button>
+                {registerError && <div className="error-message">{registerError}</div>}
+                {registerSuccess && <div className="success-message">Registration successful! Please login.</div>}
+            </div>
+        </div>
     );
 }
 

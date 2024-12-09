@@ -23,7 +23,7 @@ function UserDetailRoute({ setCurrentUser }) {
     return <UserDetail userId={userId} />;
 }
 
-function UserPhotosRoute({ advancedFeaturesEnabled, setCurrentUser }) {
+function UserPhotosRoute({ advancedFeaturesEnabled, setCurrentUser, currentUser }) {
     const { userId } = useParams();
 
     useEffect(() => {
@@ -32,7 +32,7 @@ function UserPhotosRoute({ advancedFeaturesEnabled, setCurrentUser }) {
             .catch((error) => console.error("Error fetching user data:", error));
     }, [userId, setCurrentUser]);
 
-    return <UserPhotos userId={userId} advancedFeaturesEnabled={advancedFeaturesEnabled} />;
+    return <UserPhotos currentUser={currentUser} userId={userId} advancedFeaturesEnabled={advancedFeaturesEnabled} />;
 }
 
 function ProtectedRoute({ currentUser, children }) {
@@ -48,8 +48,34 @@ function ProtectedRoute({ currentUser, children }) {
 }
 
 function PhotoShare() {
+    const [currentUser, setCurrentUser] = useState(null);
     const [advancedFeaturesEnabled, setAdvancedFeaturesEnabled] = useState(false);
-    const [loggedInUser, setLoggedInUser] = useState(null);
+
+    useEffect(() => {
+        const fetchCurrentUser = async () => {
+            try {
+                // First try to get user from localStorage
+                const storedUser = localStorage.getItem('loggedInUser');
+                if (storedUser) {
+                    setCurrentUser(JSON.parse(storedUser));
+                }
+
+                // Then verify with server
+                const response = await axios.get('/user/current');
+                const userData = response.data;
+                setCurrentUser(userData);
+                localStorage.setItem('loggedInUser', JSON.stringify(userData));
+            } catch (error) {
+                console.error('Error fetching user data:', error);
+                // Only clear if there's a real error, not just missing session
+                if (error.response?.status !== 401) {
+                    localStorage.removeItem('loggedInUser');
+                    setCurrentUser(null);
+                }
+            }
+        };
+        fetchCurrentUser();
+    }, []);
 
     const handleToggleAdvancedFeatures = () => {
         setAdvancedFeaturesEnabled(!advancedFeaturesEnabled);
@@ -61,8 +87,8 @@ function PhotoShare() {
                 <Grid container spacing={2}>
                     <Grid item xs={12}>
                         <TopBar
-                            loggedInUser={loggedInUser}
-                            setCurrentUser={setLoggedInUser}
+                            loggedInUser={currentUser}
+                            setCurrentUser={setCurrentUser}
                         />
                         <Button onClick={handleToggleAdvancedFeatures}>
                             {advancedFeaturesEnabled ? "Disable Advanced Features" : "Enable Advanced Features"}
@@ -71,7 +97,7 @@ function PhotoShare() {
                     <div className="main-topbar-buffer" />
                     <Grid item sm={3}>
                         <Paper className="main-grid-item">
-                            {loggedInUser && <UserList />} {/* Only show user list if logged in */}
+                            {currentUser && <UserList />} {/* Only show user list if logged in */}
                         </Paper>
                     </Grid>
                     <Grid item sm={9}>
@@ -80,30 +106,30 @@ function PhotoShare() {
                                 <Route
                                     path="/"
                                     element={
-                                        loggedInUser ? (
+                                        currentUser ? (
                                             <Typography variant="body1">
                                                 Welcome to your photosharing app!
                                             </Typography>
                                         ) : (
-                                            <LoginRegister setCurrentUser={setLoggedInUser} />
+                                            <LoginRegister setCurrentUser={setCurrentUser} />
                                         )
                                     }
                                 />
                                 <Route
                                     path="/login"
-                                    element={<LoginRegister setCurrentUser={setLoggedInUser} />}
+                                    element={<LoginRegister setCurrentUser={setCurrentUser} />}
                                 />
                                 <Route
                                     path="/users/:userId"
-                                    element={<ProtectedRoute currentUser={loggedInUser}><UserDetailRoute /></ProtectedRoute>}
+                                    element={<ProtectedRoute currentUser={currentUser}><UserDetailRoute setCurrentUser={setCurrentUser} /></ProtectedRoute>}
                                 />
                                 <Route
                                     path="/photos/:userId"
-                                    element={<ProtectedRoute currentUser={loggedInUser}><UserPhotosRoute advancedFeaturesEnabled={advancedFeaturesEnabled} /></ProtectedRoute>}
+                                    element={<ProtectedRoute currentUser={currentUser}><UserPhotosRoute advancedFeaturesEnabled={advancedFeaturesEnabled} setCurrentUser={setCurrentUser} currentUser={currentUser} /></ProtectedRoute>}
                                 />
                                 <Route
                                     path="/users"
-                                    element={<ProtectedRoute currentUser={loggedInUser}> <UserList /></ProtectedRoute>}
+                                    element={<ProtectedRoute currentUser={currentUser}> <UserList /></ProtectedRoute>}
                                 />
                             </Routes>
                         </Paper>
@@ -116,3 +142,5 @@ function PhotoShare() {
 
 const root = ReactDOM.createRoot(document.getElementById("photoshareapp"));
 root.render(<PhotoShare />);
+
+export default PhotoShare;
