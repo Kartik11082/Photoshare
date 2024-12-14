@@ -132,6 +132,7 @@ app.get("/user/list", async function (req, res) {
  * URL /user/:id - Returns the information for User (id) if the user is logged in.
  */
 app.get("/user/:id", async function (req, res) {
+    // console.log("/user/:id:", req.params);
     if (!req.session || !req.session.userIdRecord) {
         return res.status(401).json({ message: "User not logged in." });
     }
@@ -146,6 +147,8 @@ app.get("/user/:id", async function (req, res) {
         if (!user) {
             return res.status(404).send("User not found");
         }
+
+        console.log("/user/:id:", req.params, user);
         return res.status(200).json(user);
     } catch (err) {
         console.error("Error fetching user:", err);
@@ -207,7 +210,7 @@ app.get("/photosOfUser/:id", async function (req, res) {
  * URL /commentsOfPhoto/:photo_id - Add a new comment to a photo
  */
 app.post("/commentsOfPhoto/:photo_id", async function (req, res) {
-    console.log("commentsOfPhoto Input:", req.params, req.body);
+    // console.log("commentsOfPhoto Input:", req.params, req.body);
     if (!req.session || !req.session.userIdRecord) {
         return res.status(401).json({ message: "User not logged in." });
     }
@@ -348,25 +351,73 @@ app.post("/photos/new", function (req, res) {
 /**
  * URL /user/current - Returns the current logged-in user's information
  */
-app.get("/user/current", async function (req, res) {
-    // Check if user is logged in
+// app.get("/user/current", async (req, res) => {
+//     console.log("/user/current api call", req.params);
+//     console.log("/user/current api call", req);
+//     // Check if the session exists
+//     if (!req.session || !req.session.userIdRecord) {
+//         console.log("User not logged in. Session:", req.session);
+//         return res.status(401).json({ message: "User not logged in." });
+//     }
+
+//     try {
+//         const user = await User.findById(req.session.userIdRecord, "_id first_name last_name location description occupation");
+//         console.log("/user/current:", user);
+
+//         if (!user) {
+//             return res.status(404).json({ message: "User not found." });
+//         }
+
+//         return res.status(200).json(user);
+//     } catch (err) {
+//         console.error("Error fetching current user:", err);
+//         return res.status(500).json({ message: "Internal server error." });
+//     }
+// });
+app.get("/user/current", async (req, res) => {
+    // console.log("/user/current session data:", req.session);
+
     if (!req.session || !req.session.userIdRecord) {
+        console.log("User not logged in.");
         return res.status(401).json({ message: "User not logged in." });
     }
 
     try {
-        const user = await User.findById(req.session.userIdRecord);
+        const user = await User.findById(req.session.userIdRecord, "_id first_name last_name location description occupation");
+        console.log("Fetched user:", user);
+
         if (!user) {
-            return res.status(404).json({ message: "User not found" });
+            return res.status(404).json({ message: "User not found." });
         }
-        return res.status(200).json({
-            _id: user._id,
-            first_name: user.first_name,
-            last_name: user.last_name
-        });
+
+        return res.status(200).json(user);
     } catch (err) {
         console.error("Error fetching current user:", err);
-        return res.status(500).json({ message: "Internal server error" });
+        return res.status(500).json({ message: "Internal server error." });
+    }
+});
+
+// New endpoint to get the currently logged-in user from local storage
+app.get("/currentUser", async (req, res) => {
+    console.log("/currentUser session data:", req.session);
+
+    if (!req.session || !req.session.userIdRecord) {
+        console.log("User not logged in.");
+        return res.status(401).json({ message: "User not logged in." });
+    }
+
+    try {
+        const user = await User.findById(req.session.userIdRecord, "_id first_name last_name location description occupation");
+        console.log("Fetched user:", user);
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found." });
+        }
+
+        return res.status(200).json(user);
+    } catch (err) {
+        console.error("Error fetching current user:", err);
+        return res.status(500).json({ message: "Internal server error." });
     }
 });
 
@@ -427,6 +478,7 @@ app.get("/mentionsOfUser/:id", async function (req, res) {
 
 // Delete a photo
 app.delete("/photos/:photo_id", async function (req, res) {
+    console.log("Deleting photos:", req.params)
     if (!req.session || !req.session.userIdRecord) {
         return res.status(401).json({ message: "User not logged in." });
     }
@@ -483,6 +535,7 @@ app.delete("/comments/:photo_id/:comment_id", async function (req, res) {
 
 // Delete user account
 app.delete("/user/:user_id", async function (req, res) {
+    // console.log("Session data:", req.params, req.session); // Log session data for debugging
     if (!req.session || !req.session.userIdRecord) {
         return res.status(401).json({ message: "User not logged in." });
     }
@@ -575,4 +628,44 @@ app.get("/favorites", async (req, res) => {
 const server = app.listen(3000, function () {
     const port = server.address().port;
     console.log("Listening at http://localhost:%s exporting the directory %s", port, __dirname);
+});
+
+app.post('/login', async (req, res) => {
+    const { username, password } = req.body;
+    // Validate user credentials
+    const user = await User.findOne({ username });
+    if (!user || !user.validatePassword(password)) {
+        return res.status(401).json({ message: "Invalid credentials." });
+    }
+
+    req.session.userIdRecord = user._id; // Store user ID in session
+    return res.status(200).json({ message: "Login successful." });
+});
+
+// Endpoint to delete all photos for a specific user by user ID
+app.delete("/photos/user/:user_id", async function (req, res) {
+    // Check if the user is logged in
+    if (!req.session || !req.session.userIdRecord) {
+        return res.status(401).json({ message: "User not logged in." });
+    }
+
+    // Check if the user ID in the request matches the logged-in user
+    if (req.params.user_id !== req.session.userIdRecord.toString()) {
+        return res.status(403).json({ message: "Not authorized to delete these photos." });
+    }
+
+    try {
+        // Delete all photos associated with the user ID
+        const result = await Photo.deleteMany({ user_id: req.params.user_id });
+
+        // Check if any photos were deleted
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ message: "No photos found for this user." });
+        }
+
+        return res.status(200).json({ message: "All photos deleted successfully." });
+    } catch (err) {
+        console.error('Error deleting all photos:', err);
+        return res.status(500).json({ message: "Internal server error." });
+    }
 });

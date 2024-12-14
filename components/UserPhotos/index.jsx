@@ -1,5 +1,5 @@
 import DeleteIcon from '@mui/icons-material/Delete';
-import { Button, Card, CardContent, CardMedia, Divider, IconButton, Typography } from "@mui/material";
+import { Button, Card, CardContent, CardMedia, Divider, IconButton, Typography, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from "@mui/material";
 import axios from "axios";
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -19,6 +19,7 @@ function UserPhotos({ userId, advancedFeaturesEnabled, currentUser }) {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [itemToDelete, setItemToDelete] = useState(null);
     const [deleteType, setDeleteType] = useState(null); // 'photo' or 'comment'
+    const [deletePhotosDialogOpen, setDeletePhotosDialogOpen] = useState(false);
     const [favorites, setFavorites] = useState(new Set());
 
     useEffect(() => {
@@ -45,7 +46,8 @@ function UserPhotos({ userId, advancedFeaturesEnabled, currentUser }) {
     useEffect(() => {
         const checkOwnProfile = async () => {
             try {
-                const response = await axios.get('/user/current');
+                // const response = await axios.get('/user/current');
+                const response = await axios.get('/currentUser');
                 setIsOwnProfile(String(response.data._id) === String(userId));
             } catch (error) {
                 setIsOwnProfile(false);
@@ -113,6 +115,7 @@ function UserPhotos({ userId, advancedFeaturesEnabled, currentUser }) {
             if (deleteType === 'photo') {
                 await axios.delete(`/photos/${itemToDelete}`);
                 setPhotos(photos.filter(photo => photo._id !== itemToDelete));
+                // window.location.reload();
             } else if (deleteType === 'comment') {
                 const [photoId, commentId] = itemToDelete.split(':');
                 await axios.delete(`/comments/${photoId}/${commentId}`);
@@ -158,6 +161,17 @@ function UserPhotos({ userId, advancedFeaturesEnabled, currentUser }) {
             {favorites.has(photoId) ? <FavoriteIcon /> : <FavoriteBorderIcon />}
         </IconButton>
     );
+
+    const handleDeleteUserPhotos = async () => {
+        try {
+            // await axios.delete(`/photos/user/${userId}`);
+            await axios.delete(`/photos/user/${userId}`);
+            setPhotos([]);
+            console.log("All photos deleted successfully.");
+        } catch (error) {
+            console.error("Error deleting photos:", error);
+        }
+    };
 
     if (loading) {
         return <Typography variant="body1">Loading...</Typography>;
@@ -220,15 +234,32 @@ function UserPhotos({ userId, advancedFeaturesEnabled, currentUser }) {
             <div>
                 <Typography variant="h4">Photos of User {userId}</Typography>
                 {isOwnProfile && (
-                    <Button
-                        variant="contained"
-                        color="primary"
-                        onClick={() => setShowUploadDialog(true)}
-                        sx={{ mb: 2 }}
-                    >
-                        Add Photo
-                    </Button>
+                    <>
+                        <Button
+                            variant="contained"
+                            color="error"
+                            onClick={() => setDeletePhotosDialogOpen(true)}
+                            sx={{ mb: 2 }}
+                        >
+                            Delete All My Photos
+                        </Button>
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            onClick={() => setShowUploadDialog(true)}
+                            sx={{ mb: 2 }}
+                        >
+                            Add Photo
+                        </Button>
+                    </>
                 )}
+                <DeleteConfirmDialog
+                    open={deletePhotosDialogOpen}
+                    title="Delete All Photos"
+                    message="Are you sure you want to delete all your photos? This action cannot be undone."
+                    onConfirm={handleDeleteUserPhotos}
+                    onCancel={() => setDeletePhotosDialogOpen(false)}
+                />
                 {photos.map((photo) => (
                     <Card key={photo._id} sx={{ marginBottom: 2 }}>
                         <CardMedia
@@ -296,14 +327,24 @@ function UserPhotos({ userId, advancedFeaturesEnabled, currentUser }) {
             <div>
                 <Typography variant="h4">Photos of User {userId}</Typography>
                 {isOwnProfile && (
-                    <Button
-                        variant="contained"
-                        color="primary"
-                        onClick={() => setShowUploadDialog(true)}
-                        sx={{ mb: 2 }}
-                    >
-                        Add Photo
-                    </Button>
+                    <>
+                        <Button
+                            variant="contained"
+                            color="error"
+                            onClick={() => setDeletePhotosDialogOpen(true)}
+                            sx={{ mb: 2 }}
+                        >
+                            Delete All My Photos
+                        </Button>
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            onClick={() => setShowUploadDialog(true)}
+                            sx={{ mb: 2 }}
+                        >
+                            Add Photo
+                        </Button>
+                    </>
                 )}
                 <div className="moveButton">
                     <Button
