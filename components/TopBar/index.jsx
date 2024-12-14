@@ -3,6 +3,8 @@ import { AppBar, Toolbar, Typography, Button } from "@mui/material";
 import axios from "axios";
 import PhotoUpload from "../PhotoUpload";
 import "./styles.css";
+import FavoriteIcon from '@mui/icons-material/Favorite';
+import { Link } from 'react-router-dom';
 
 function TopBar({ loggedInUser, setCurrentUser }) {
     const [version, setVersion] = useState(null);
@@ -68,6 +70,15 @@ function TopBar({ loggedInUser, setCurrentUser }) {
                             style={{ marginLeft: "20px" }}
                         >
                             Add Photo
+                        </Button>
+                        <Button
+                            color="inherit"
+                            component={Link}
+                            to="/favorites"
+                            startIcon={<FavoriteIcon />}
+                            style={{ marginLeft: "20px" }}
+                        >
+                            Favorites
                         </Button>
                         <Button
                             color="inherit"

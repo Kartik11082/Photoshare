@@ -1,0 +1,39 @@
+Favorite list of photos for users
+Story points: 6
+User Story:
+A logged-in user should be able to favorite photos and have a user-specific list of favorites appear on a
+new page (path: /favorites). That page should be dedicated to showing a list of favorited photos of
+that user. Users should be able to remove favorited photos from that list.
+Users should be able to intuitively mark any photo as a favorite by clicking on a button appearing next
+to any photo shown on any user's list of photos. While a photo is favorited:
+● The button to favorite that photo on a user's list of photos should be disabled.
+● There should be some clear indicator that this photo is currently favorited by the user.
+On a new view component, the user should be able to see a list of favorited photos, which must meet
+the following specifications:
+● Each photo must be represented by a small thumbnail.
+● Clicking on the thumbnail should cause a modal window to open up displaying a larger version
+of the image (see hint below). It’s not sufficient to just have the click direct the user to a new
+page containing only that photo.
+● The modal should also contain a caption consisting of the date associated with the image.
+● There should be an intuitive way to remove a photo (e.g., clicking the upper right “x” on a
+thumbnail) from the list so that it is not part of the user’s list of favorites any longer, even if the
+user refreshes the page and logs back in.
+Other notes:
+● The list of favorited photos should be be accessible via the url path /favorites (#!/favorites
+or #/favorites).
+● Conditionally display navigation UI in the sidenav or top toolbar to the favorites page depending
+on whether the user is logged in.
+● This list of favorited photos must persist across multiple sessions: i.e., you must use the serverside database to keep track of this list and access this information to construct the list when
+users visit their favorites page.
+
+Hints:
+React Hints
+● You may find https://github.com/reactjs/react-modal, https://mui.com/material-ui/react-modal/, or
+https://github.com/react-bootstrap/react-overlays helpful. When using libraries with components,
+read the documentation carefully.
+● A significant challenge for this story will be getting the dependencies installed and configured
+correctly for your photo sharing app.
+● Any UNMET PEER DEPENDENCY <package-name> during `npm install` means that you need
+to install <package-name> before installing your current package.
+
+

@@ -59,13 +59,15 @@ function CommentInput({ photoId, onCommentSubmitted }) {
     }, []);
 
     const handleSubmit = async () => {
-        if (!comment.trim()) return;
+        console.log("handleSubmit:", mentions);
+        if (!comment.trim() || !photoId) return;
 
         try {
             const response = await axios.post(`/commentsOfPhoto/${photoId}`, {
                 comment,
-                mentions: mentions.map(mention => mention.id)
+                mentions: mentions
             });
+            console.log("comment response:", response, `//${photoId}`);
 
             setComment('');
             setMentions([]);
@@ -77,11 +79,26 @@ function CommentInput({ photoId, onCommentSubmitted }) {
         }
     };
 
-    // const handleMentionChange = (event, newValue, newPlainTextValue, mentions) => {
-    const handleMentionChange = (event, newValue) => {
+    // Update handleMentionChange to extract mention IDs correctly
+    const handleMentionChange = (newMentions, newValue) => {
+        console.log("Mention:", newMentions, newValue);
         setComment(newValue);
-        setMentions(mentions);
-        console.log('Mentions:', mentions); // Debug log
+
+        // Extract the mention string from the target value
+        const mentionString = newMentions.target.value;
+
+        // Use a regular expression to find all mentions in the string
+        const mentionRegex = /@\[(.*?)\]\((.*?)\)/g;
+        const mentionIds = [];
+        let match;
+
+        // Loop through all matches and extract the IDs
+        while ((match = mentionRegex.exec(mentionString)) !== null) {
+            mentionIds.push(match[2]); // match[2] contains the ID
+        }
+
+        setMentions(mentionIds);
+        console.log('Mentions:', mentionIds); // Debug log
     };
 
     return (

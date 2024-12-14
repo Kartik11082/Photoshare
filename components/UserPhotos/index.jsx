@@ -7,17 +7,19 @@ import CommentInput from "../CommentInput";
 import DeleteConfirmDialog from '../DeleteConfirmDialog';
 import PhotoUpload from "../PhotoUpload";
 import "./styles.css";
+import FavoriteIcon from '@mui/icons-material/Favorite';
+import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 
 function UserPhotos({ userId, advancedFeaturesEnabled, currentUser }) {
     const [photos, setPhotos] = useState([]);
     const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
-    // const [newComment, setNewComment] = useState("");
     const [loading, setLoading] = useState(true);
     const [isOwnProfile, setIsOwnProfile] = useState(false);
     const [showUploadDialog, setShowUploadDialog] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [itemToDelete, setItemToDelete] = useState(null);
     const [deleteType, setDeleteType] = useState(null); // 'photo' or 'comment'
+    const [favorites, setFavorites] = useState(new Set());
 
     useEffect(() => {
         console.log("Fetching user photos");
@@ -51,6 +53,22 @@ function UserPhotos({ userId, advancedFeaturesEnabled, currentUser }) {
         };
         checkOwnProfile();
     }, [userId]);
+
+    useEffect(() => {
+        const loadFavorites = async () => {
+            try {
+                const response = await axios.get('/favorites');
+                const favoriteIds = new Set(response.data.map(fav => fav.photo_id._id));
+                setFavorites(favoriteIds);
+            } catch (error) {
+                console.error('Error loading favorites:', error);
+            }
+        };
+
+        if (currentUser) {
+            loadFavorites();
+        }
+    }, [currentUser]);
 
     const handlePhotoUploaded = (newPhoto) => {
         setPhotos(prevPhotos => [...prevPhotos, newPhoto]);
@@ -117,6 +135,30 @@ function UserPhotos({ userId, advancedFeaturesEnabled, currentUser }) {
         setDeleteType(null);
     };
 
+    const handleFavoriteToggle = async (photoId) => {
+        try {
+            if (favorites.has(photoId)) {
+                await axios.delete(`/favorites/remove/${photoId}`);
+                favorites.delete(photoId);
+            } else {
+                await axios.post(`/favorites/add/${photoId}`);
+                favorites.add(photoId);
+            }
+            setFavorites(new Set(favorites));
+        } catch (error) {
+            console.error('Error toggling favorite:', error);
+        }
+    };
+
+    const renderFavoriteButton = (photoId) => (
+        <IconButton
+            onClick={() => handleFavoriteToggle(photoId)}
+            color={favorites.has(photoId) ? "secondary" : "default"}
+        >
+            {favorites.has(photoId) ? <FavoriteIcon /> : <FavoriteBorderIcon />}
+        </IconButton>
+    );
+
     if (loading) {
         return <Typography variant="body1">Loading...</Typography>;
     }
@@ -172,38 +214,6 @@ function UserPhotos({ userId, advancedFeaturesEnabled, currentUser }) {
         }).filter(Boolean); // Filter out any invalid/null comments
     };
 
-    // const handleCommentSubmit = async (photoId) => {
-    //     if (!newComment.trim()) {
-    //         console.log("Comment cannot be empty!");
-    //         return;
-    //     }
-
-    //     try {
-    //         const response = await axios.post(`/commentsOfPhoto/${photoId}`, {
-    //             comment: newComment,
-    //         });
-
-    //         const newCommentData = response.data.comment;
-
-    //         // Update the photos array with the new comment
-    //         const updatedPhotos = photos.map((photo) => {
-    //             if (photo._id === photoId) {
-    //                 return {
-    //                     ...photo,
-    //                     comments: [...photo.comments, newCommentData],
-    //                 };
-    //             }
-    //             return photo;
-    //         });
-
-    //         setPhotos(updatedPhotos);
-    //         setNewComment(""); // Clear the input field
-
-    //     } catch (error) {
-    //         console.error("Error submitting comment:", error);
-    //         // You might want to show an error message to the user here
-    //     }
-    // };
 
     if (!advancedFeaturesEnabled) {
         return (
@@ -258,6 +268,7 @@ function UserPhotos({ userId, advancedFeaturesEnabled, currentUser }) {
                                     <DeleteIcon />
                                 </IconButton>
                             )}
+                            {currentUser && renderFavoriteButton(photo._id)}
                         </CardContent>
                     </Card>
                 ))}
@@ -351,6 +362,7 @@ function UserPhotos({ userId, advancedFeaturesEnabled, currentUser }) {
                                 <DeleteIcon />
                             </IconButton>
                         )}
+                        {currentUser && renderFavoriteButton(photo._id)}
                     </CardContent>
                 </Card>
                 {showUploadDialog && (

@@ -9,6 +9,7 @@ import UserDetail from "./components/UserDetail";
 import UserList from "./components/UserList";
 import UserPhotos from "./components/UserPhotos";
 import LoginRegister from "./components/LoginRegister";
+import Favorites from "./components/Favorites";
 import "./styles/main.css";
 
 function UserDetailRoute({ setCurrentUser }) {
@@ -130,6 +131,12 @@ function PhotoShare() {
                                 <Route
                                     path="/users"
                                     element={<ProtectedRoute currentUser={currentUser}> <UserList /></ProtectedRoute>}
+                                />
+                                <Route 
+                                    path="/favorites" 
+                                    element={
+                                        <Favorites />
+                                    } 
                                 />
                             </Routes>
                         </Paper>

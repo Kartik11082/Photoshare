@@ -21,6 +21,7 @@ app.use(express.json()); // Middleware to parse JSON request bodies.
 const User = require("./schema/user.js");
 const Photo = require("./schema/photo.js");
 const SchemaInfo = require("./schema/schemaInfo.js");
+const Favorite = require("./schema/favorite.js");
 
 mongoose.set("strictQuery", false);
 mongoose.connect("mongodb://127.0.0.1/project6", {
@@ -206,6 +207,7 @@ app.get("/photosOfUser/:id", async function (req, res) {
  * URL /commentsOfPhoto/:photo_id - Add a new comment to a photo
  */
 app.post("/commentsOfPhoto/:photo_id", async function (req, res) {
+    console.log("commentsOfPhoto Input:", req.params, req.body);
     if (!req.session || !req.session.userIdRecord) {
         return res.status(401).json({ message: "User not logged in." });
     }
@@ -509,6 +511,63 @@ app.delete("/user/:user_id", async function (req, res) {
     } catch (err) {
         console.error('Error deleting account:', err);
         return res.status(500).json({ message: "Internal server error" });
+    }
+});
+
+// Add a photo to favorites
+app.post("/favorites/add/:photo_id", async (req, res) => {
+    if (!req.session.userIdRecord) {
+        return res.status(401).json({ error: "Not logged in" });
+    }
+
+    try {
+        const favorite = new Favorite({
+            user_id: req.session.userIdRecord,
+            photo_id: req.params.photo_id
+        });
+        await favorite.save();
+        res.status(200).json(favorite);
+    } catch (err) {
+        if (err.code === 11000) { // Duplicate key error
+            res.status(400).json({ error: "Photo already in favorites" });
+        } else {
+            res.status(500).json({ error: "Server error" });
+        }
+    }
+});
+
+// Remove a photo from favorites
+app.delete("/favorites/remove/:photo_id", async (req, res) => {
+    if (!req.session.userIdRecord) {
+        return res.status(401).json({ error: "Not logged in" });
+    }
+
+    try {
+        await Favorite.deleteOne({
+            user_id: req.session.userIdRecord,
+            photo_id: req.params.photo_id
+        });
+        res.status(200).json({ message: "Removed from favorites" });
+    } catch (err) {
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
+// Get user's favorites
+app.get("/favorites", async (req, res) => {
+    if (!req.session.userIdRecord) {
+        return res.status(401).json({ error: "Not logged in" });
+    }
+
+    try {
+        const favorites = await Favorite.find({ user_id: req.session.userIdRecord })
+            .populate({
+                path: 'photo_id',
+                populate: { path: 'user_id' }
+            });
+        res.status(200).json(favorites);
+    } catch (err) {
+        res.status(500).json({ error: "Server error" });
     }
 });
 
